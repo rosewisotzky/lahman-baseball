@@ -165,10 +165,10 @@ HAVING SUM(games) >= 10
 ORDER BY avg_attendance DESC
 LIMIT 5;
 
---Repeat for the lowest 5 average attendance.
+--Repeat for the lowest 5 average attendance. -- note to self, you're seeing some repeats. maybe a grouping set could help here?
 
 SELECT 
-	parks.park_name,
+	DISTINCT parks.park_name,
 	teams.name,
 	SUM(homegames.attendance)/SUM(homegames.games) AS avg_attendance
 FROM homegames
@@ -177,10 +177,34 @@ FROM homegames
 WHERE year = 2016
 GROUP BY parks.park_name, teams.name
 HAVING SUM(games) >= 10
-ORDER BY avg_attendance DESC
+ORDER BY avg_attendance
 LIMIT 5;
+
 -- 9. Which managers have won the TSN Manager of the Year award in both the National League (NL) and the American League (AL)? Give their full name and the teams that they were managing when they won the award.
 
 
+WITH TSN_manager_of_year AS (SELECT
+								awardsmanagers.playerID
+							FROM awardsmanagers
+							WHERE awardsmanagers.lgid = 'NL'
+								AND awardsmanagers.awardid = 'TSN Manager of the Year'
+							INTERSECT
+							SELECT
+							awardsmanagers.playerID					 
+							FROM awardsmanagers
+							WHERE awardsmanagers.lgid = 'AL'
+								AND awardsmanagers.awardid = 'TSN Manager of the Year')
+SELECT 
+	CONCAT(namefirst, ' ', namelast) AS full_name,
+	teams.name,
+	awardsmanagers.yearID
+FROM TSN_manager_of_year
+	INNER JOIN people USING(playerID)
+	INNER JOIN managers USING(playerID)
+	INNER JOIN awardsmanagers USING(playerID, yearID)
+	INNER JOIN appearances ON awardsmanagers.playerID = tsn_manager_of_year.playerID
+	INNER JOIN teams ON appearances.teamID = teams.teamID AND awardsmanagers.yearID = teams.yearID
+GROUP BY namefirst, namelast, name, awardsmanagers.yearid
+ORDER BY full_name, yearid
 
 -- 10. Find all players who hit their career highest number of home runs in 2016. Consider only players who have played in the league for at least 10 years, and who hit at least one home run in 2016. Report the players' first and last names and the number of home runs they hit in 2016.
