@@ -149,7 +149,7 @@ ON year_team_wins.yearid = max_wins_by_year.yearid
 
 -- Now that we joined the two tables, we can filter for the years we need, and order by year
 WHERE max_wins_by_year.yearid BETWEEN 1970 AND 2016
-ORDER BY max_wins_by_year.yearid
+ORDER BY max_wins_by_year.yearid;
 
 ---------------------------------------------------------------------------------------------------------------------------
 -- 7b. 
@@ -162,7 +162,7 @@ FROM teams
 WHERE wswin = 'Y'
 	AND yearid BETWEEN 1970 AND 2016
 ORDER BY total_wins
-LIMIT 1
+LIMIT 1;
 -- The smallest number of wins for a team that did win the world series is 63.
 -- This happened in 1981 when there was a player strike
 
@@ -177,7 +177,7 @@ WHERE wswin = 'Y'
 	AND yearid BETWEEN 1970 AND 2016
 	AND yearid <> 1981
 ORDER BY total_wins
-LIMIT 1
+LIMIT 1;
 ---------------------------------------------------------------------------------------------------------------------------
 -- 7d.
 -- How often from 1970 – 2016 was it the case that a team with the most wins also won the world series? What percentage of the time?
@@ -215,43 +215,50 @@ WITH big_table AS (SELECT year_wins_team.yearid,
 
 -- Take the average of the most_wins_and_won_worldseries column
 SELECT ROUND(AVG(most_wins_and_won_worldseries), 2) * 100 AS percent_of_most_wins_that_won_worldseries
-FROM big_table
+FROM big_table;
 -- from 1970 – 2016, a team with the most wins also won the world series 23% of the time.
 
 ---------------------------------------------------------------------------------------------------------------------------
-8. 
+-- 8. 
 -- Using the attendance figures from the homegames table, find the teams and parks which had the top 5 average attendance per game in 2016 
 -- (where average attendance is defined as total attendance divided by number of games). 
 -- Only consider parks where there were at least 10 games played. Report the park name, team name, and average attendance. 
+
+SELECT team, park, attendance/games AS average_attendance
+FROM homegames
+WHERE year = 2016 AND games >= 10
+ORDER BY average_attendance DESC
+LIMIT 5;
+
 -- Repeat for the lowest 5 average attendance.
+SELECT team, park, attendance/games AS average_attendance
+FROM homegames
+WHERE year = 2016 AND games >= 10
+ORDER BY average_attendance
+LIMIT 5;
 
+---------------------------------------------------------------------------------------------------------------------------
+-- 9. Which managers have won the TSN Manager of the Year award in both the National League (NL) and the American League (AL)? 
+-- Give their full name and the teams that they were managing when they won the award.
 
+WITH manager AS (SELECT *
+			  -- 20 Managers who have won the TSN manager of the year award in NL
+			  FROM (SELECT DISTINCT(playerid)
+				   FROM awardsmanagers
+				   WHERE awardid = 'TSN Manager of the Year'
+					   AND (lgid = 'NL')) AS NL_awards
 
+			  -- 23 Managers who have won the TSN manager of the year award in AL
+			  INNER JOIN (SELECT DISTINCT(playerid)
+					     FROM awardsmanagers
+					     WHERE awardid = 'TSN Manager of the Year'
+						     AND (lgid = 'AL')) AS AL_awards
+			  USING(playerid))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+SELECT namefirst, namelast
+FROM manager m
+	LEFT JOIN people p
+		USING(playerid)
 
 
 
