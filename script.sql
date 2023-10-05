@@ -49,19 +49,23 @@
  -----------------------------------------------------------------------------------------
  --4. Using the fielding table, group players into three groups based on their position: label players with position OF as "Outfield", those with position "SS", "1B", "2B", and "3B" as "Infield", and those with position "P" or "C" as "Battery". Determine the number of putouts made by each of these three groups in 2016.-
  
- SELECT count(po) AS putout1,
+ SELECT SUM(po) AS putout1,
            CASE WHEN pos ='OF'THEN 'Outfield'
 		        WHEN pos ='SS'OR pos = '1B' OR pos = '2B' OR pos = '3B' THEN 'INfield'
 	            WHEN pos = 'P'OR pos = 'C' THEN 'Battery'ELSE 'Ignore' END AS spot
  FROM fielding
  WHERE yearid = '2016'	
  GROUP BY spot;
- 
+  --- outfield =29560 , Infield = 58934, Battery = 41424
 ----------------------------------------------------------------------		 
 --5. Find the average number of strikeouts per game by decade since 1920. Round the numbers you report to 2 decimal places. Do the same for home runs per game. Do you see any trends?         
  --For strikeouts,so and home runs, hr
  -- use CTE
-WITH decades_all AS(SELECT yearid, 
+	 
+			 
+---Both averages have upward trends.
+---Averdage Strikeouts,'so' seams increases faster than home runs,'hr'
+			 WITH decades_all AS(SELECT yearid, 
 				   CASE WHEN yearid between 1920 AND 1929 THEN '1920S'
              			WHEN yearid between 1930 AND 1939 THEN '1930S'
 		            	WHEN yearid between 1940 AND 1949 THEN '1940S'
@@ -77,21 +81,17 @@ WITH decades_all AS(SELECT yearid,
 SELECT decades, 
       ROUND(avg(so/g),2) as avg_so, 
 	  ROUND(avg(hr/g),2) as avg_hr
-FROM pitching
+FROM teams
 INNER JOIN decades_all
 USING(yearid)		
 GROUP BY decades
-ORDER BY decades;	 
-			 
----Both averages have upward trends.
----Averdage Strikeouts,'so' seams increases faster than home runs,'hr'
-			 
+ORDER BY decades;
 ------------------------------------------------------------------------ 
 --6. Find the player who had the most success stealing bases in 2016, where __success__ is measured as the percentage of stolen base attempts which are successful.(A stolen base attempt results either in a stolen base or being caught stealing.) Consider only players who attempted _at least_ 20 stolen bases. 
  
 WITH sb_success_attempt	AS
 		 (SELECT playerid,(SUM(sb::numeric+cs::numeric)) AS sb_attempt,
-			 			 ROUND((SUM(sb::numeric)/SUM(sb::numeric +cs::numeric))*100,2) AS percentage_sb_success
+			 	   ROUND((SUM(sb::numeric)/SUM(sb::numeric +cs::numeric))*100,2) AS percentage_sb_success
  			FROM batting
  			WHERE yearid = '2016' AND sb >= 20
  			GROUP BY playerid,sb,cs)
@@ -102,7 +102,100 @@ WITH sb_success_attempt	AS
  ORDER BY percentage_sb_success DESC;
   
  ---CHRIS OWING had the most success stealing bases in 2016.
+ 
+ -----------------------------------------------------------------------
+-- 7.  From 1970 – 2016, what is the largest number of wins for a team that did not win the world series? What is the smallest number of wins for a team that did win the world series? Doing this will probably result in an unusually small number of wins for a world series champion – determine why this is the case. Then redo your query, excluding the problem the problem year. How often from 1970 – 2016 was it the case that a team with the most wins also won the world series? What percentage of the time?
+ 
+--wswin - World Series Winner (Y or N)
+--wins - wins by team that won the series
+--teamidwinner - Team ID of the team that won the series
+--w - wins
 
+---From 1970 – 2016, what is the largest number of wins for a team that did not win the world series?
+ SELECT teamidwinner,count(wins) AS total_number_teamwin,yearid
+ FROM seriespost
+ 	INNER JOIN teams
+ 	USING (yearid)
+ WHERE yearid BETWEEN '1970' and '2016'
+ 	AND wswin = 'N'
+ GROUP BY teamidwinner,yearid
+ ORDER BY total_number_teamwin DESC;
+ -----------------------------------------------
+--- What is the smallest number of wins for a team that did win the world series?
+  SELECT teamidwinner,count(wins) AS total_number_teamwin,yearid
+ FROM seriespost
+ 	INNER JOIN teams
+ 	USING (yearid)
+ WHERE yearid BETWEEN '1970' and '2016'
+ 	AND wswin = 'Y'
+ GROUP BY teamidwinner,yearid
+ ORDER BY total_number_teamwin;
+ 
+ --Doing this will probably result in an unusually small number of wins for a world series champion – determine why this is the case
+
+-- ====>>>May be due to ellimination in each round
+ ---------------------------------------------------
+ --Then redo your query, excluding the problem year. 
+ ---exclude year
+ SELECT yearid,teamidwinner,count(wins) AS total_number_teamwin
+ FROM seriespost
+ 	INNER JOIN teams
+ 	USING (yearid)
+ WHERE  wswin = 'N'
+ GROUP BY teamidwinner,yearid
+ ORDER BY total_number_teamwin DESC;
+-----------------------------------------------------
+ SELECT yearid, teamidwinner,count(wins) AS total_number_teamwin
+ FROM seriespost
+ 	INNER JOIN teams
+ 	USING (yearid)
+ WHERE  wswin = 'Y'
+ GROUP BY teamidwinner,yearid
+ ORDER BY total_number_teamwin;
+
+ ---------------------------------------------------------- 
+-- How often from 1970 – 2016 was it the case that a team with the most wins also won the world series? What percentage of the time?
+ 
+ SELECT teamidwinner,yearid,count(wins) AS total_number_teamwin,SUM(wins) AS total_sum_win
+ FROM seriespost
+ 	INNER JOIN teams
+ 	USING (yearid)
+ WHERE  wswin = 'Y'
+ GROUP BY teamidwinner,yearid
+ ORDER BY total_number_teamwin DESC;
+--------------------------------------------------------------- 
+-- What percentage of the time?
+ 
+ SELECT teamidwinner,yearid,round((SUM(total_number_teamwin)/SUM(total_sum_win))*100,0) AS percent_of_time
+ FROM 
+     (SELECT teamidwinner,yearid,count(wins) AS total_number_teamwin,SUM(wins) AS total_sum_win
+       FROM seriespost
+ 			INNER JOIN teams
+ 			USING (yearid)
+	 WHERE  wswin = 'Y'
+ 	 GROUP BY teamidwinner,yearid
+ 	 ORDER BY total_number_teamwin DESC) as totalwin
+GROUP BY teamidwinner,yearid;
+ ----------------------------------------------------------------- 
+-- 8. Using the attendance figures from the homegames table, find the teams and parks which had the top 5 average attendance per game in 2016 (where average attendance is defined as total attendance divided by number of games). Only consider parks where there were at least 10 games played. Report the park name, team name, and average attendance. Repeat for the lowest 5 average attendance.	   
+			
+ SELECT t.name,p.park_name,
+        (hg.attendance/hg.games) AS average_attendance
+ FROM homegames AS hg
+ INNER JOIN parks AS p
+ USING(park)
+ INNER JOIN teams AS t
+ USING(park)
+ WHERE year = '2016' AND games >=10	 	 
+ GROUP BY t.name, p.park_name
+ ORDER BY average_attendance DESC
+ LIMIT 5;
+ 
+ 
+ 
+  
+  
+ 
  
  
  
