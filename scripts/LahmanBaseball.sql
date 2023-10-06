@@ -137,18 +137,31 @@ LIMIT 1;
 --How often from 1970 – 2016 was it the case that a team with the most wins also won the world series? What percentage of the time?
 --what I want to find is the following: for each year between 1970 and 2016, see if the team with the most wins won the world series.
 
-WITH wins_by_series AS(SELECT
-							DISTINCT yearID,
-							CASE WHEN wswin = 'Y' THEN MAX(W)END AS max_wins_series,
-							CASE WHEN wswin <> 'Y' THEN MAX(W) END AS max_wins_no_series
-						FROM teams
-						WHERE yearID BETWEEN 1970 AND 2016
-						GROUP BY yearID, wswin)
-SELECT 
-	COUNT(max_wins_series) AS max_wins_series_count,
-	COUNT(max_wins_no_series) AS max_wins_no_series_count
-FROM wins_by_series
-WHERE max_wins_series IS NOT NULL;
+/*  NOTES TO SELF
+
+Let's break it down. What do I need to answer this?
+- Find the teams with the most wins per year between 1970-2016
+-GROUP BY year? 
+-Use the where statement to see if they were a WS winner?
+....is that it?
+
+*/
+--HERE i'm ranking the max of each year in my cte and then filtering by WSWin and rank in my regular query. 
+WITH rank_cte AS(SELECT
+					yearID,
+					name,
+					MAX(W) AS max_wins,
+				 	WSWin,
+					RANK() OVER(PARTITION BY yearID ORDER BY max(w) DESC)
+				FROM teams
+				WHERE yearID BETWEEN 1970 AND 2016
+				GROUP BY yearID, name, wswin
+				ORDER BY yearID DESC)
+SELECT COUNT(*) AS wswinners_and_max_winners
+FROM rank_cte
+WHERE RANK = 1 AND WSWIN = 'Y';
+
+
 
 -- 8. Using the attendance figures from the homegames table, find the teams and parks which had the top 5 average attendance per game in 2016 (where average attendance is defined as total attendance divided by number of games). Only consider parks where there were at least 10 games played. Report the park name, team name, and average attendance. 
 
@@ -203,7 +216,7 @@ WHERE awardsmanagers.playerID IN(SELECT
 							FROM awardsmanagers
 							WHERE awardsmanagers.lgid = 'AL'
 								AND awardsmanagers.awardid = 'TSN Manager of the Year')
-GROUP BY namefirst, namelast, awardsmanagers.yearid, NAME, teams.teamid
+GROUP BY namefirst, namelast, awardsmanagers.yearid, name, teams.teamid
 ORDER BY full_name, yearid;
 
 -- 10. Find all players who hit their career highest number of home runs in 2016. Consider only players who have played in the league for at least 10 years, and who hit at least one home run in 2016. Report the players' first and last names and the number of home runs they hit in 2016.
@@ -217,12 +230,23 @@ debut <= 2013
 HR >= 1 (batting table) year = 2016
 */
 
-SELECT 
-	CONCAT(namefirst, ' ', namelast) AS full_name,
-	MAX(HR) AS max_homeruns,
-	batting.yearID
-FROM people
-	INNER JOIN batting USING(playerID)
-WHERE debut <= '2013-10-6' 
-GROUP BY namefirst, namelast, batting.yearid
-ORDER BY max_homeruns DESC;
+WITH max_runs_debut AS( SELECT 
+					   		playerID,
+							CONCAT(namefirst, ' ', namelast) AS full_name,
+							MAX(HR) AS max_homeruns,
+							batting.yearID
+						FROM people
+							INNER JOIN batting USING(playerID)
+						WHERE debut <= '2013-10-6' 
+						GROUP BY namefirst, namelast, batting.yearid, playerID
+						ORDER BY max_homeruns DESC)
+SELECT full_name,
+		MAX(max_homeruns) AS career_high
+FROM max_runs_debut
+WHERE yearID = 2016
+	AND playerID IN(SELECT playerID
+					FROM batting
+					WHERE yearID = 2016 AND HR>=1)
+GROUP BY full_name, yearid
+HAVING MAX(max_homeruns) > 0
+ORDER BY career_high DESC;
