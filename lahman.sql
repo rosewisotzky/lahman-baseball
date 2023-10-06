@@ -34,7 +34,7 @@ INNER join salaries
  USING(playerid)
 GROUP BY namefirst,namelast
 ORDER BY total_salary DESC;
---David Price earned the most. 
+--David Price earned the most 81,851,296. 
 _________________________________________________________________________________________________________________________________________________________________________________
 --4,Using the fielding table, group players into three groups based on their position: label players with position OF as "Outfield", 
 --those with position "SS", "1B", "2B", and "3B" as "Infield", and those with position "P" or "C" as "Battery".
@@ -51,14 +51,14 @@ WITH grouped_players AS (SELECT SUM (PO) AS putouts,
 						 	 ORDER BY putouts)
 SELECT DISTINCT positions,SUM(putouts)as putouts
 from grouped_players
-GROUP BY positions
+GROUP BY positions;
 -- Battery - 41424 putouts, Infield-58934 putouts ,Outfield-29560 putouts
 ______________________________________________________________________________________________________________________________________________________________________________________________________
 --5,Find the average number of strikeouts per game by decade since 1920. Round the numbers you report to 2 decimal places. 
 --Do the same for home runs per game. Do you see any trends?
 SELECT decade.decade,
-	ROUND (AVG((t.SO)/t.G), 2) AS avg_strikouts,
-	ROUND (AVG((t. HR)/t.G), 2) AS avg_homeruns
+	ROUND (sum(t.SO):: numeric/SUM(t.G/2), 2) AS avg_strikouts,
+	ROUND (sum(t. HR):: numeric/sum(t.G/2), 2) AS avg_homeruns
 FROM teams AS t
 	INNER JOIN (SELECT yearid, CASE WHEN yearid BETWEEN 1920 AND 1929 THEN '1920s'
 								   WHEN yearid BETWEEN 1930 AND 1939 THEN '1930s'
@@ -116,37 +116,43 @@ order by W;
 
 --How often from 1970 – 2016 was it the case that a team with the most wins also won the world series? What percentage of the time?
 
-WITH count_of_w_ws AS (SELECT yearid, teamid, name, w, l, wswin,
-					    MAX(w) OVER (PARTITION BY yearid) AS most_wins
+WITH count_of_w_ws AS (SELECT yearid, 
+					    MAX(w) AS most_wins
 						FROM teams
-						WHERE yearid BETWEEN 1970 AND 2016)
+						WHERE yearid BETWEEN 1970 AND 2016
+					    GROUP BY yearid)
 
-SELECT COUNT(*)AS times_wins_w_ws,
-      100* COUNT (*):: numeric /(select count(distinct yearid)from count_of_w_ws)as percentage
+SELECT ROUND(AVG(CASE WHEN wswin='Y'THEN 1 ELSE 0 END)*100,2) AS percentage ,
+		count(case when wswin='Y'then 1 end)as count_ws_wins
+      --100* COUNT (*):: numeric /(select count(distinct yearid)from count_of_w_ws)as percentage
 FROM count_of_w_ws
-WHERE w = most_wins AND wswin = 'Y'
---12 times,25.5%
+INNER JOIN teams
+  USING (yearid)
+WHERE w = most_wins; --AND wswin = 'Y'
+--12 times,22.64%
 ________________________________________________________________________________________________________________________________________________________________________________________________________________________
 --8, Using the attendance figures from the homegames table, find the teams and parks which had the top 5 average attendance per game in 2016. Only consider parks where there were at least 10 games played.Report the park name, team name, and average attendance
-SELECT t.name,p.park_name, hg.attendance/hg.games as avg_attendance
+SELECT t.name,p.park_name, SUM(hg.attendance)/hg.games as avg_attendance
 FROM homegames as hg
 INNER JOIN parks AS p
  USING (park)
 INNER JOIN teams AS t
  USING (attendance)
 WHERE year=2016 AND games >= '10'
+Group by t.name,p.park_name,hg.games
 ORDER BY avg_attendance DESC
 LIMIT 5;
 -- Top 5 average attendance
 
 --Repeat for the lowest 5 average attendance.
-SELECT t.name,p.park_name,hg.attendance/hg.games as avg_attendance
+SELECT t.name,p.park_name,Sum(hg.attendance)/hg.games as avg_attendance
 FROM homegames as hg
 INNER JOIN parks AS p
  USING (park)
 INNER JOIN teams AS t
  USING (attendance)
 WHERE year=2016 AND games >= '10'
+GROUP BY t.name,p.park_name,hg.games
 ORDER BY avg_attendance ASC
 LIMIT 5;
 -- lowest 5 average attendance 2016
@@ -175,6 +181,7 @@ INNER JOIN awardsmanagers AS a
 	USING (playerid,yearid)
 WHERE awardid='TSN Manager of the Year'
 GROUP BY namefirst,namelast,yearid,a.lgid,teamid,awardid
+ORDER BY yearid;
 -- Davey Johnson 1997(BAL),2012(WAS)
 -- JIM Leyland 1988,1990,1992(PIT),2006(DET)
 _________________________________________________________________________________________________________________________________________________________________________________________________________
@@ -190,6 +197,6 @@ WITH hr_players AS (SELECT playerid, namefirst,namelast , finalgame, hr, yearid,
 SELECT namefirst,namelast,hr,yearid
 FROM hr_players
 WHERE yearid = 2016 AND hr > 0 AND hr = max_hr AND (date(finalgame)-date(debut))/365 >=10 
-ORDER BY playerid, yearid
+ORDER BY playerid , yearid , hr DESC;
 ____________________________________________________________________________________________________________________________________________________________________________-
 
