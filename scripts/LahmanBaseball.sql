@@ -161,6 +161,40 @@ SELECT COUNT(*) AS wswinners_and_max_winners
 FROM rank_cte
 WHERE RANK = 1 AND WSWIN = 'Y';
 
+--above answer gives me 12, now to figure out the average....--
+
+WITH rank_winners_cte AS(SELECT
+					yearID,
+					name,
+					MAX(W) AS max_wins,
+				 	WSWin,
+					RANK() OVER(PARTITION BY yearID ORDER BY max(w) DESC)
+				FROM teams
+				WHERE yearID BETWEEN 1970 AND 2016
+				GROUP BY yearID, name, wswin
+				ORDER BY yearID DESC),
+	 rank_cte AS(SELECT
+					yearID,
+					name,
+					MAX(W) AS max_wins,
+				 	WSWin,
+					RANK() OVER(PARTITION BY yearID ORDER BY max(w) DESC)
+				FROM teams
+				WHERE yearID BETWEEN 1970 AND 2016
+				GROUP BY yearID, name, wswin
+				ORDER BY yearID DESC)
+				
+SELECT COUNT(DISTINCT name) AS wswinners_and_max_winners
+FROM rank_winners_cte
+WHERE RANK = 1 AND WSWIN = 'Y'
+
+
+SELECT COUNT(*) AS not_wswinners
+FROM rank_cte
+WHERE RANK <> 1 AND WSWIN <> 'Y'
+
+
+
 
 
 -- 8. Using the attendance figures from the homegames table, find the teams and parks which had the top 5 average attendance per game in 2016 (where average attendance is defined as total attendance divided by number of games). Only consider parks where there were at least 10 games played. Report the park name, team name, and average attendance. 
