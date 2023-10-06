@@ -91,7 +91,7 @@ ORDER BY decades;
  
 WITH sb_success_attempt	AS
 		 (SELECT playerid,(SUM(sb::numeric+cs::numeric)) AS sb_attempt,
-			 	   ROUND((SUM(sb::numeric)/SUM(sb::numeric +cs::numeric))*100,2) AS percentage_sb_success
+			 	   ROUND((SUM(sb::numeric)/SUM(sb::numeric + cs::numeric))*100,2) AS percentage_sb_success
  			FROM batting
  			WHERE yearid = '2016' AND sb >= 20
  			GROUP BY playerid,sb,cs)
@@ -102,7 +102,6 @@ WITH sb_success_attempt	AS
  ORDER BY percentage_sb_success DESC;
   
  ---CHRIS OWING had the most success stealing bases in 2016.
- 
  -----------------------------------------------------------------------
 -- 7.  From 1970 – 2016, what is the largest number of wins for a team that did not win the world series? What is the smallest number of wins for a team that did win the world series? Doing this will probably result in an unusually small number of wins for a world series champion – determine why this is the case. Then redo your query, excluding the problem the problem year. How often from 1970 – 2016 was it the case that a team with the most wins also won the world series? What percentage of the time?
  
@@ -112,46 +111,32 @@ WITH sb_success_attempt	AS
 --w - wins
 
 ---From 1970 – 2016, what is the largest number of wins for a team that did not win the world series?
- SELECT teamidwinner,count(wins) AS total_number_teamwin,yearid
+ SELECT teamidwinner,count(wins)AS max_win
  FROM seriespost
  	INNER JOIN teams
  	USING (yearid)
  WHERE yearid BETWEEN '1970' and '2016'
  	AND wswin = 'N'
- GROUP BY teamidwinner,yearid
- ORDER BY total_number_teamwin DESC;
+ GROUP BY teamidwinner
+ ORDER BY max_win DESC
+ LIMIT 1;
+ 
+ ---NYA 805
  -----------------------------------------------
 --- What is the smallest number of wins for a team that did win the world series?
-  SELECT teamidwinner,count(wins) AS total_number_teamwin,yearid
+  SELECT teamidwinner,COUNT(wins)as max_win
  FROM seriespost
  	INNER JOIN teams
  	USING (yearid)
  WHERE yearid BETWEEN '1970' and '2016'
  	AND wswin = 'Y'
- GROUP BY teamidwinner,yearid
- ORDER BY total_number_teamwin;
+ GROUP BY teamidwinner
+ ORDER BY max_win;
  
+ --ML4.MON,AND MIL -1
  --Doing this will probably result in an unusually small number of wins for a world series champion – determine why this is the case
 
--- ====>>>May be due to ellimination in each round
- ---------------------------------------------------
- --Then redo your query, excluding the problem year. 
- ---exclude year
- SELECT yearid,teamidwinner,count(wins) AS total_number_teamwin
- FROM seriespost
- 	INNER JOIN teams
- 	USING (yearid)
- WHERE  wswin = 'N'
- GROUP BY teamidwinner,yearid
- ORDER BY total_number_teamwin DESC;
------------------------------------------------------
- SELECT yearid, teamidwinner,count(wins) AS total_number_teamwin
- FROM seriespost
- 	INNER JOIN teams
- 	USING (yearid)
- WHERE  wswin = 'Y'
- GROUP BY teamidwinner,yearid
- ORDER BY total_number_teamwin;
+-- ====>>>May be due to ellimination in each rounD
 
  ---------------------------------------------------------- 
 -- How often from 1970 – 2016 was it the case that a team with the most wins also won the world series? What percentage of the time?
@@ -178,23 +163,68 @@ WITH sb_success_attempt	AS
 GROUP BY teamidwinner,yearid;
  ----------------------------------------------------------------- 
 -- 8. Using the attendance figures from the homegames table, find the teams and parks which had the top 5 average attendance per game in 2016 (where average attendance is defined as total attendance divided by number of games). Only consider parks where there were at least 10 games played. Report the park name, team name, and average attendance. Repeat for the lowest 5 average attendance.	   
-			
- SELECT t.name,p.park_name,
-        (hg.attendance/hg.games) AS average_attendance
- FROM homegames AS hg
- INNER JOIN parks AS p
- USING(park)
- INNER JOIN teams AS t
- USING(park)
- WHERE year = '2016' AND games >=10	 	 
- GROUP BY t.name, p.park_name
+
+--	the top 5 average attendance per game in 2016		
+ SELECT teams.name,parks.park_name, homegames.attendance/homegames.games AS average_attendance
+ FROM homegames 
+ 	INNER JOIN parks
+ 	USING(park)
+ 	INNER JOIN teams
+ 	USING(attendance)
+ WHERE year = '2016' AND games >=10	 
  ORDER BY average_attendance DESC
  LIMIT 5;
+
+ --the lowest 5 average attendance per game in 2016
+ SELECT teams.name,parks.park_name, homegames.attendance/homegames.games AS average_attendance
+ FROM homegames 
+ 	INNER JOIN parks
+ 	USING(park)
+ 	INNER JOIN teams
+ 	USING(attendance)
+ WHERE year = '2016' AND games >=10	 
+ ORDER BY average_attendance
+ LIMIT 5;
+ --------------------------------------------------------------------------------- 
+-- 9. Which managers have won the TSN Manager of the Year award in both the National League (NL) and the American League (AL)? Give their full name and the teams that they were managing when they won the award.
+  --use where clause sub_query
+				
+	SELECT CONCAT(namefirst,' ',namelast)AS full_name,t.name
+	FROM awardsmanagers AS am
+		INNER JOIN people AS p
+		USING (playerid)
+		INNER JOIN teams AS t
+		USING(yearid)
+	WHERE playerid IN 
+					((SELECT playerid
+					 FROM awardsmanagers AS am		
+					 WHERE am.lgid = 'AL'
+					 	AND awardid = 'TSN Manager of the Year')
+					 INTERSECT
+					(SELECT playerid
+					 FROM awardsmanagers AS am
+					 WHERE am.lgid = 'NL'
+					 	AND awardid = 'TSN Manager of the Year'))
+--------------------------------------------------------------------------------------------
+--10. Find all players who hit their career highest number of home runs in 2016. Consider only players who have played in the league for at least 10 years, and who hit at least one home run in 2016. Report the players' first and last names and the number of home runs they hit in 2016.	
  
+ SELECT playerid,concat(namefirst,' ',namelast)AS full_name, count(hr)AS number_homerun,max(h) AS highest_hit
+ FROM batting 
+	 INNER JOIN people
+ 	USING (playerid)
+ WHERE playerid IN( SELECT playerid
+				    FROM batting
+				   -- yearid <='2016'-'10'
+				    WHERE yearid<='2006' 
+				   		AND h >= 1)
+     AND yearid='2016' 
+ GROUP BY playerid, namefirst,namelast
+ ORDER BY highest_hit DESC ;
  
- 
-  
-  
+---------------------------------------------------------------------------------------------
+--**Open-ended questions**
+--11. Is there any correlation between number of wins and team salary? Use data from 2000 and later to answer this question. As you do this analysis, keep in mind that salaries across the whole league tend to increase together, so you may want to look on a year-by-year basis.
+
  
  
  
