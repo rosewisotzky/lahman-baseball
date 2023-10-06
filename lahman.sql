@@ -9,9 +9,9 @@ SELECT count(a.g_all) as game_played,t.name,
 	   MIN(p.height)as shortest,p.namefirst,p.namelast
 FROM people as p
 INNER JOIN appearances as a
-USING (playerid)
+ USING (playerid)
 INNER JOIN teams as t
-USING (teamid)
+ USING (teamid)
 GROUP BY t.name,p.namefirst,p.namelast
 ORDER BY shortest
 LIMIT 1;
@@ -34,7 +34,7 @@ INNER join salaries
  USING(playerid)
 GROUP BY namefirst,namelast
 ORDER BY total_salary DESC;
---David Price earned the most. $81,851296
+--David Price earned the most. 
 _________________________________________________________________________________________________________________________________________________________________________________
 --4,Using the fielding table, group players into three groups based on their position: label players with position OF as "Outfield", 
 --those with position "SS", "1B", "2B", and "3B" as "Infield", and those with position "P" or "C" as "Battery".
@@ -83,7 +83,7 @@ ________________________________________________________________________________
 SELECT sb,namefirst,namelast, ROUND(sb::numeric * 100/SUM (sb+cs),2)AS percentage
 FROM batting as b
 INNER JOIN people as p
-ON b.playerID = p.playerid
+ ON b.playerID = p.playerid
 WHERE yearid=2016 AND sb+cs >=20
 GROUP BY sb,namefirst,namelast
 ORDER BY percentage DESC
@@ -115,21 +115,17 @@ order by W;
 --83
 
 --How often from 1970 – 2016 was it the case that a team with the most wins also won the world series? What percentage of the time?
-WITH teams_year_name AS (SELECT yearid,wswin,name,
-							   SUM(CASE WHEN wswin = 'Y' THEN 1 ELSE 0 END) AS sum_wswins
-						 FROM teams
-						 WHERE yearid BETWEEN 1970 and 2016 AND WSwin ='Y'
-						 GROUP BY yearid,wswin,name
-						 	 UNION 
-						 SELECT yearid,wswin,name,
-							   SUM(CASE WHEN wswin = 'N' THEN 1 ELSE 0 END) AS sum_NO_wswins
-						 FROM teams
-						 WHERE yearid BETWEEN 1970 and 2016 AND WSwin ='Y' AND w >=(SELECT MAX(w)AS max_win FROM teams)
-						 GROUP BY yearid,wswin,name
-						 ORDER BY yearid)
-SELECT yearid, name,wswin, (1.00/46.00)::numeric*100.00
-FROM teams_year_name
-GROUP BY yearid,name,wswin
+
+WITH count_of_w_ws AS (SELECT yearid, teamid, name, w, l, wswin,
+					    MAX(w) OVER (PARTITION BY yearid) AS most_wins
+						FROM teams
+						WHERE yearid BETWEEN 1970 AND 2016)
+
+SELECT COUNT(*)AS times_wins_w_ws,
+      100* COUNT (*):: numeric /(select count(distinct yearid)from count_of_w_ws)as percentage
+FROM count_of_w_ws
+WHERE w = most_wins AND wswin = 'Y'
+--12 times,25.5%
 ________________________________________________________________________________________________________________________________________________________________________________________________________________________
 --8, Using the attendance figures from the homegames table, find the teams and parks which had the top 5 average attendance per game in 2016. Only consider parks where there were at least 10 games played.Report the park name, team name, and average attendance
 SELECT t.name,p.park_name, hg.attendance/hg.games as avg_attendance
@@ -163,7 +159,7 @@ WITH tsn_manager as ((SELECT DISTINCT playerid
 						WHERE awardid = 'TSN Manager of the Year' AND lgid ='NL'
 						GROUP BY playerid
 						ORDER BY playerid)
-						INTERSECT
+						 INTERSECT
 						(SELECT DISTINCT playerid
 						FROM awardsmanagers
 						WHERE awardid = 'TSN Manager of the Year' AND lgid ='AL'
@@ -184,11 +180,16 @@ GROUP BY namefirst,namelast,yearid,a.lgid,teamid,awardid
 _________________________________________________________________________________________________________________________________________________________________________________________________________
 --10, Find all players who hit their career highest number of home runs in 2016. Consider only players who have played in the league for at least 10 years,
 --and who hit at least one home run in 2016. Report the players' first and last names and the number of home runs they hit in 2016.
-SELECT*
-FROM  batting
-WITH 
-    SELECT playerid,h,MAX(hr)as highest_hr,yearid
-    FROM batting
-    WHERE yearid='2016' and lgid >= '10' AND hr>='1'
-    GROUP BY playerid,h,yearid
+
+WITH hr_players AS (SELECT playerid, namefirst,namelast , finalgame, hr, yearid,debut,
+						MAX(hr) OVER (PARTITION BY playerid) AS max_hr
+					FROM batting 
+					 INNER JOIN people 
+					USING (playerid))
+
+SELECT namefirst,namelast,hr,yearid
+FROM hr_players
+WHERE yearid = 2016 AND hr > 0 AND hr = max_hr AND (date(finalgame)-date(debut))/365 >=10 
+ORDER BY playerid, yearid
+____________________________________________________________________________________________________________________________________________________________________________-
 
