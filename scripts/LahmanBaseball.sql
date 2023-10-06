@@ -183,7 +183,16 @@ LIMIT 5;
 -- 9. Which managers have won the TSN Manager of the Year award in both the National League (NL) and the American League (AL)? Give their full name and the teams that they were managing when they won the award.
 
 
-WITH TSN_manager_of_year AS (SELECT
+SELECT 
+	CONCAT(namefirst, ' ', namelast) AS full_name,
+	awardsmanagers.yearID,
+	teams.name,
+	teams.teamID
+FROM awardsmanagers
+	INNER JOIN people USING(playerID)
+	INNER JOIN managers ON awardsmanagers.playerID = managers.playerID AND awardsmanagers.yearID = managers.yearID
+	INNER JOIN teams ON managers.teamID = teams.teamID AND awardsmanagers.yearID = teams.yearID
+WHERE awardsmanagers.playerID IN(SELECT
 								awardsmanagers.playerID
 							FROM awardsmanagers
 							WHERE awardsmanagers.lgid = 'NL'
@@ -194,17 +203,26 @@ WITH TSN_manager_of_year AS (SELECT
 							FROM awardsmanagers
 							WHERE awardsmanagers.lgid = 'AL'
 								AND awardsmanagers.awardid = 'TSN Manager of the Year')
-SELECT 
-	CONCAT(namefirst, ' ', namelast) AS full_name,
-	teams.name,
-	awardsmanagers.yearID
-FROM TSN_manager_of_year
-	INNER JOIN people USING(playerID)
-	INNER JOIN managers USING(playerID)
-	INNER JOIN awardsmanagers USING(playerID, yearID)
-	INNER JOIN appearances ON awardsmanagers.playerID = tsn_manager_of_year.playerID
-	INNER JOIN teams ON appearances.teamID = teams.teamID AND awardsmanagers.yearID = teams.yearID
-GROUP BY namefirst, namelast, name, awardsmanagers.yearid
-ORDER BY full_name, yearid
+GROUP BY namefirst, namelast, awardsmanagers.yearid, NAME, teams.teamid
+ORDER BY full_name, yearid;
 
 -- 10. Find all players who hit their career highest number of home runs in 2016. Consider only players who have played in the league for at least 10 years, and who hit at least one home run in 2016. Report the players' first and last names and the number of home runs they hit in 2016.
+
+
+/* notes for me!
+Things I'm looking for: highest career number of home runs.. MAX()? but this gotta be from all years....
+
+WHERE year = 2016
+debut <= 2013
+HR >= 1 (batting table) year = 2016
+*/
+
+SELECT 
+	CONCAT(namefirst, ' ', namelast) AS full_name,
+	MAX(HR) AS max_homeruns,
+	batting.yearID
+FROM people
+	INNER JOIN batting USING(playerID)
+WHERE debut <= '2013-10-6' 
+GROUP BY namefirst, namelast, batting.yearid
+ORDER BY max_homeruns DESC;
