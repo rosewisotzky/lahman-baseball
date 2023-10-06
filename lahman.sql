@@ -5,17 +5,17 @@ FROM teams;
 --1871-2016
 _________________________________________________________________________________________________________________________________________
 --2,Find the name and height of the shortest player in the database. How many games did he play in? What is the name of the team for which he played?
-SELECT count(a.g_all) as game_played,t.name,
+SELECT a.g_all as game_played,t.name,
 	   MIN(p.height)as shortest,p.namefirst,p.namelast
 FROM people as p
 INNER JOIN appearances as a
  USING (playerid)
 INNER JOIN teams as t
  USING (teamid)
-GROUP BY t.name,p.namefirst,p.namelast
+GROUP BY t.name,p.namefirst,p.namelast,a.g_all
 ORDER BY shortest
 LIMIT 1;
--- EDDIE Gaedel shortest player, he played in 52 games for St.Louis Browns. 
+-- EDDIE Gaedel shortest player, he played in 1 games for St.Louis Browns. 
 ____________________________________________________________________________________________________________________________________________________________________________
 --3,Find all players in the database who played at Vanderbilt University. Create a list showing each player’s first and last names
 --as well as the total salary they earned in the major leagues. Sort this list in descending order by the total salary earned.
