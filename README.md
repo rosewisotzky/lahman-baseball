@@ -1,3 +1,5 @@
+#### NOTE: This was a group project with multiple contributors. All work on the rose-wisotzky branch was completed by Rose Wisotzky. The answers to the questions below are included in the file titled LahmanBaseball.sql in the scripts folder. 
+
 ## Lahman Baseball Database Exercise
 - this data has been made available [online](http://www.seanlahman.com/baseball-archive/statistics/) by Sean Lahman
 - you can find a data dictionary [here](http://www.seanlahman.com/files/database/readme2016.txt)
